@@ -3,29 +3,58 @@ const auth = require("../middleware/auth");
 
 const router = express.Router();
 
-/* GET CURRENT USER */
-router.get("/me", auth, (req, res) => {
-  res.json(req.user);
+/* =========================
+   GET CURRENT USER
+========================= */
+router.get("/me", auth, async (req, res) => {
+
+  return res.json({
+    success: true,
+    user: req.user
+  });
+
 });
 
-/* UPDATE PROFILE */
+/* =========================
+   UPDATE PROFILE
+========================= */
 router.put("/update", auth, async (req, res) => {
 
-  const user = req.user;
+  try {
 
-  user.profile = {
-    ...user.profile,
-    ...req.body.profile
-  };
+    const user = req.user;
 
-  user.settings = {
-    ...user.settings,
-    ...req.body.settings
-  };
+    if (req.body.profile) {
+      user.profile = {
+        ...user.profile,
+        ...req.body.profile
+      };
+    }
 
-  await user.save();
+    if (req.body.settings) {
+      user.settings = {
+        ...user.settings,
+        ...req.body.settings
+      };
+    }
 
-  res.json(user);
+    await user.save();
+
+    return res.json({
+      success: true,
+      user
+    });
+
+  } catch (err) {
+
+    console.error("PROFILE UPDATE ERROR:", err);
+
+    return res.status(500).json({
+      success: false,
+      error: "Failed to update profile"
+    });
+
+  }
 
 });
 
