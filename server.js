@@ -8,28 +8,33 @@ require("dotenv").config();
 const app = express();
 
 /* =========================
-   TRUST PROXY (IMPORTANT)
+   TRUST PROXY
 ========================= */
 app.set("trust proxy", 1);
 
 /* =========================
-   CORS (MUST BE FIRST)
+   CORS CONFIG
 ========================= */
-app.use(cors({
+const corsOptions = {
   origin: [
     "https://fades.lol",
     "https://www.fades.lol"
   ],
-  credentials: true
-}));
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+};
 
 /* =========================
-   HANDLE PREFLIGHT REQUESTS
+   CORS
 ========================= */
-app.options("*", cors());
+app.use(cors(corsOptions));
+
+/* IMPORTANT */
+app.options("*", cors(corsOptions));
 
 /* =========================
-   JSON BODY PARSER
+   BODY PARSER
 ========================= */
 app.use(express.json());
 
@@ -37,10 +42,11 @@ app.use(express.json());
    DATABASE
 ========================= */
 mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB connected"));
+  .then(() => console.log("MongoDB connected"))
+  .catch(console.error);
 
 /* =========================
-   SESSIONS (SERVER-SIDE)
+   SESSIONS
 ========================= */
 app.use(session({
   name: "sid",
@@ -75,5 +81,5 @@ app.use("/api/profile", require("./routes/profile"));
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-  console.log("API running on port", PORT);
+  console.log(`API running on port ${PORT}`);
 });
