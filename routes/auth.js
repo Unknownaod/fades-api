@@ -9,79 +9,142 @@ const router = express.Router();
    REGISTER
 ========================= */
 router.post("/register", async (req, res) => {
+
   try {
-    const { username, email, password } = req.body;
+
+    let { username, email, password } = req.body;
+
+    username = username?.trim();
+    email = email?.trim().toLowerCase();
 
     if (!username || !email || !password) {
-      return res.status(400).json({ error: "Missing fields" });
+      return res.status(400).json({
+        success: false,
+        error: "All fields are required"
+      });
     }
 
-    const exists = await User.findOne({
-      $or: [{ username }, { email }]
+    if (username.length < 3 || username.length > 20) {
+      return res.status(400).json({
+        success: false,
+        error: "Username must be 3-20 characters"
+      });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        error: "Password too short"
+      });
+    }
+
+    const existingUser = await User.findOne({
+      $or: [
+        { username: new RegExp(`^${username}$`, "i") },
+        { email }
+      ]
     });
 
-    if (exists) {
-      return res.status(400).json({ error: "Username or email already used" });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        error: "Username or email already exists"
+      });
     }
 
-    const hash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, 10);
 
     const user = await User.create({
       username,
       email,
-      passwordHash: hash
+      passwordHash
     });
 
     const token = jwt.sign(
-      { userId: user._id },
+      {
+        userId: user._id
+      },
       process.env.JWT_SECRET,
-      { expiresIn: "7d" }
+      {
+        expiresIn: "7d"
+      }
     );
 
-    return res.json({
+    return res.status(201).json({
       success: true,
       token,
       user: {
         id: user._id,
-        username: user.username
+        username: user.username,
+        email: user.email
       }
     });
 
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: "Server error" });
+
+    console.error("REGISTER ERROR:", err);
+
+    return res.status(500).json({
+      success: false,
+      error: "Server error"
+    });
+
   }
+
 });
 
 /* =========================
    LOGIN
 ========================= */
 router.post("/login", async (req, res) => {
+
   try {
-    const { username, password } = req.body;
+
+    let { username, password } = req.body;
+
+    username = username?.trim();
 
     if (!username || !password) {
-      return res.status(400).json({ error: "Missing credentials" });
+      return res.status(400).json({
+        success: false,
+        error: "Missing credentials"
+      });
     }
 
     const user = await User.findOne({
-      $or: [{ username }, { email: username }]
+      $or: [
+        { username: new RegExp(`^${username}$`, "i") },
+        { email: username.toLowerCase() }
+      ]
     });
 
     if (!user) {
-      return res.status(400).json({ error: "Invalid credentials" });
+      return res.status(400).json({
+        success: false,
+        error: "Invalid credentials"
+      });
     }
 
-    const ok = await bcrypt.compare(password, user.passwordHash);
+    const validPassword = await bcrypt.compare(
+      password,
+      user.passwordHash
+    );
 
-    if (!ok) {
-      return res.status(400).json({ error: "Invalid credentials" });
+    if (!validPassword) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid credentials"
+      });
     }
 
     const token = jwt.sign(
-      { userId: user._id },
+      {
+        userId: user._id
+      },
       process.env.JWT_SECRET,
-      { expiresIn: "7d" }
+      {
+        expiresIn: "7d"
+      }
     );
 
     return res.json({
@@ -89,22 +152,33 @@ router.post("/login", async (req, res) => {
       token,
       user: {
         id: user._id,
-        username: user.username
+        username: user.username,
+        email: user.email
       }
     });
 
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: "Server error" });
+
+    console.error("LOGIN ERROR:", err);
+
+    return res.status(500).json({
+      success: false,
+      error: "Server error"
+    });
+
   }
+
 });
 
 /* =========================
-   LOGOUT (CLIENT HANDLES IT)
+   LOGOUT
 ========================= */
 router.post("/logout", (req, res) => {
-  // JWT = no server session to destroy
-  return res.json({ success: true });
+
+  return res.json({
+    success: true
+  });
+
 });
 
 module.exports = router;
