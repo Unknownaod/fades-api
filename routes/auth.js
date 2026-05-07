@@ -1,33 +1,27 @@
 const express = require("express");
 const bcrypt = require("bcrypt");
+const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
 const router = express.Router();
 
-/* REGISTER */
+/* =========================
+   REGISTER
+========================= */
 router.post("/register", async (req, res) => {
-
   try {
-
     const { username, email, password } = req.body;
 
     if (!username || !email || !password) {
-      return res.status(400).json({
-        error: "Missing fields"
-      });
+      return res.status(400).json({ error: "Missing fields" });
     }
 
     const exists = await User.findOne({
-      $or: [
-        { username },
-        { email }
-      ]
+      $or: [{ username }, { email }]
     });
 
     if (exists) {
-      return res.status(400).json({
-        error: "Username or email already used"
-      });
+      return res.status(400).json({ error: "Username or email already used" });
     }
 
     const hash = await bcrypt.hash(password, 10);
@@ -38,155 +32,79 @@ router.post("/register", async (req, res) => {
       passwordHash: hash
     });
 
-    req.session.regenerate(async (err) => {
+    const token = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
 
-      if (err) {
-        console.error(err);
-
-        return res.status(500).json({
-          error: "Session error"
-        });
+    return res.json({
+      success: true,
+      token,
+      user: {
+        id: user._id,
+        username: user.username
       }
-
-      req.session.userId = user._id;
-      req.session.loggedInAt = Date.now();
-
-      req.session.save((err) => {
-
-        if (err) {
-          console.error(err);
-
-          return res.status(500).json({
-            error: "Session save failed"
-          });
-        }
-
-        return res.json({
-          success: true,
-          user: {
-            id: user._id,
-            username: user.username
-          }
-        });
-
-      });
-
     });
 
   } catch (err) {
-
     console.error(err);
-
-    return res.status(500).json({
-      error: "Server error"
-    });
-
+    return res.status(500).json({ error: "Server error" });
   }
-
 });
 
-/* LOGIN */
+/* =========================
+   LOGIN
+========================= */
 router.post("/login", async (req, res) => {
-
   try {
-
     const { username, password } = req.body;
 
     if (!username || !password) {
-      return res.status(400).json({
-        error: "Missing credentials"
-      });
+      return res.status(400).json({ error: "Missing credentials" });
     }
 
     const user = await User.findOne({
-      $or: [
-        { username },
-        { email: username }
-      ]
+      $or: [{ username }, { email: username }]
     });
 
     if (!user) {
-      return res.status(400).json({
-        error: "Invalid credentials"
-      });
+      return res.status(400).json({ error: "Invalid credentials" });
     }
 
-    const ok = await bcrypt.compare(
-      password,
-      user.passwordHash
-    );
+    const ok = await bcrypt.compare(password, user.passwordHash);
 
     if (!ok) {
-      return res.status(400).json({
-        error: "Invalid credentials"
-      });
+      return res.status(400).json({ error: "Invalid credentials" });
     }
 
-    req.session.regenerate((err) => {
+    const token = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
 
-      if (err) {
-        console.error(err);
-
-        return res.status(500).json({
-          error: "Session error"
-        });
+    return res.json({
+      success: true,
+      token,
+      user: {
+        id: user._id,
+        username: user.username
       }
-
-      req.session.userId = user._id;
-      req.session.loggedInAt = Date.now();
-
-      req.session.save((err) => {
-
-        if (err) {
-          console.error(err);
-
-          return res.status(500).json({
-            error: "Session save failed"
-          });
-        }
-
-        return res.json({
-          success: true,
-          user: {
-            id: user._id,
-            username: user.username
-          }
-        });
-
-      });
-
     });
 
   } catch (err) {
-
     console.error(err);
-
-    return res.status(500).json({
-      error: "Server error"
-    });
-
+    return res.status(500).json({ error: "Server error" });
   }
-
 });
 
-/* LOGOUT */
+/* =========================
+   LOGOUT (CLIENT HANDLES IT)
+========================= */
 router.post("/logout", (req, res) => {
-
-  req.session.destroy(() => {
-
-    res.clearCookie("sid", {
-      httpOnly: true,
-      secure: true,
-      sameSite: "none",
-      domain: ".fades.lol"
-    });
-
-    res.json({
-      success: true
-    });
-
-  });
-
+  // JWT = no server session to destroy
+  return res.json({ success: true });
 });
 
 module.exports = router;
