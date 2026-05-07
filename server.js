@@ -1,14 +1,12 @@
 const express = require("express");
 const mongoose = require("mongoose");
-const session = require("express-session");
-const MongoStore = require("connect-mongo");
 const cors = require("cors");
 require("dotenv").config();
 
 const app = express();
 
 /* =========================
-   TRUST PROXY
+   TRUST PROXY (needed for hosting)
 ========================= */
 app.set("trust proxy", 1);
 
@@ -25,12 +23,7 @@ const corsOptions = {
   allowedHeaders: ["Content-Type", "Authorization"]
 };
 
-/* =========================
-   CORS
-========================= */
 app.use(cors(corsOptions));
-
-/* IMPORTANT */
 app.options("*", cors(corsOptions));
 
 /* =========================
@@ -43,31 +36,7 @@ app.use(express.json());
 ========================= */
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB connected"))
-  .catch(console.error);
-
-/* =========================
-   SESSIONS
-========================= */
-app.use(session({
-  name: "sid",
-  secret: process.env.SESSION_SECRET,
-
-  resave: false,
-  saveUninitialized: false,
-
-  store: MongoStore.create({
-    mongoUrl: process.env.MONGO_URI,
-    collectionName: "sessions"
-  }),
-
-  cookie: {
-    httpOnly: true,
-    secure: true,
-    sameSite: "none",
-    domain: ".fades.lol",
-    maxAge: 1000 * 60 * 60 * 24 * 7
-  }
-}));
+  .catch((err) => console.error("Mongo error:", err));
 
 /* =========================
    ROUTES
