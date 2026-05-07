@@ -7,10 +7,13 @@ require("dotenv").config();
 
 const app = express();
 
-app.use(express.json());
+/* =========================
+   TRUST PROXY (IMPORTANT)
+========================= */
+app.set("trust proxy", 1);
 
 /* =========================
-   CORS (Vercel frontend)
+   CORS (MUST BE FIRST)
 ========================= */
 app.use(cors({
   origin: [
@@ -19,6 +22,16 @@ app.use(cors({
   ],
   credentials: true
 }));
+
+/* =========================
+   HANDLE PREFLIGHT REQUESTS
+========================= */
+app.options("*", cors());
+
+/* =========================
+   JSON BODY PARSER
+========================= */
+app.use(express.json());
 
 /* =========================
    DATABASE
@@ -45,9 +58,7 @@ app.use(session({
     httpOnly: true,
     secure: true,
     sameSite: "none",
-
     domain: ".fades.lol",
-
     maxAge: 1000 * 60 * 60 * 24 * 7
   }
 }));
