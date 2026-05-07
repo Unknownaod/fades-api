@@ -1,37 +1,35 @@
+const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
 module.exports = async function (req, res, next) {
-
   try {
+    const auth = req.headers.authorization;
 
-    if (!req.session || !req.session.userId) {
-      return res.status(401).json({
-        error: "Not authenticated"
-      });
+    if (!auth) {
+      return res.status(401).json({ error: "No token provided" });
     }
 
-    const user = await User.findById(req.session.userId);
+    const token = auth.split(" ")[1];
+
+    if (!token) {
+      return res.status(401).json({ error: "Invalid token format" });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    const user = await User.findById(decoded.userId);
 
     if (!user) {
-      req.session.destroy(() => {});
-      
-      return res.status(401).json({
-        error: "Invalid session"
-      });
+      return res.status(401).json({ error: "User not found" });
     }
 
     req.user = user;
+    req.userId = user._id;
 
     next();
 
   } catch (err) {
-
-    console.error("AUTH MIDDLEWARE ERROR:", err);
-
-    return res.status(500).json({
-      error: "Internal server error"
-    });
-
+    console.error("AUTH ERROR:", err);
+    return res.status(401).json({ error: "Unauthorized" });
   }
-
 };
