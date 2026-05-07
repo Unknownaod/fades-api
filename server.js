@@ -13,7 +13,10 @@ app.use(express.json());
    CORS (Vercel frontend)
 ========================= */
 app.use(cors({
-  origin: "https://fades.lol",
+  origin: [
+    "https://fades.lol",
+    "https://www.fades.lol"
+  ],
   credentials: true
 }));
 
