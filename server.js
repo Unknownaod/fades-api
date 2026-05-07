@@ -45,6 +45,9 @@ app.use(session({
     httpOnly: true,
     secure: true,
     sameSite: "none",
+
+    domain: ".fades.lol",
+
     maxAge: 1000 * 60 * 60 * 24 * 7
   }
 }));
